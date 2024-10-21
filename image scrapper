@@ -1,0 +1,45 @@
+// This simple puppeteer script will extract images on a given domain and save them into a file (png)
+
+
+const puppeteer = require("puppeteer");
+const fs = require("fs");
+const path = require("path");
+
+(async () => {
+  const url = "https://example.com/"; // Replace with the desired domain
+  const outputDir = "./example_images"; // Directory to save images
+
+  // Create output directory if it doesn't exist
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir);
+  }
+
+  const browser = await puppeteer.launch();
+  const page = await browser.newPage();
+  await page.goto(url, { waitUntil: "networkidle2" });
+
+  // Get all image elements
+  const images = await page.evaluate(() => {
+    return Array.from(document.images, (img) => img.src);
+  });
+
+  console.log(`Found ${images.length} images.`);
+
+  for (let i = 0; i < images.length; i++) {
+    const imageUrl = images[i];
+
+    try {
+      // Fetch the image
+      const viewSource = await page.goto(imageUrl);
+      const imageFilePath = path.join(outputDir, `image${i + 1}.png`);
+
+      // Save the image to file
+      fs.writeFileSync(imageFilePath, await viewSource.buffer());
+      console.log(`Saved image: ${imageFilePath}`);
+    } catch (error) {
+      console.error(`Failed to save image ${imageUrl}:`, error);
+    }
+  }
+
+  await browser.close();
+})();
